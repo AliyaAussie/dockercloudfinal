@@ -5,6 +5,7 @@ namespace AppBundle\Command;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use DockerCloud;
 
 class StopCommand extends Command
 {
@@ -23,5 +24,17 @@ class StopCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $output->writeln('Stopping...');
+
+
+        DockerCloud\Client::configure('tombayley1','868b7978-7dcf-41ca-af79-0d27027ac6a1');
+
+        $API = new DockerCloud\API\NodeCluster();
+        $Response = $API->getList();
+        $nClusters = $Response->getObjects();
+
+        foreach ($nClusters as $nCluster) {
+            $output->writeln("{$nCluster->getName()} ({$nCluster->getUuid()})");
+        }
+        
     }
 }

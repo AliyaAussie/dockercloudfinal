@@ -19,9 +19,19 @@ class StartCommand extends Command
             // the full command description shown when running the command with the "--help" option
             ->setHelp('Uses previously recorded nodes for each node cluster and states for each stack to scale node clusters back up and restore each stacks state');
     }
+    
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $output->writeln('Starting...');
+        
+        
+        
+        
+        
     }
+    
+    
+    
+    
 }
