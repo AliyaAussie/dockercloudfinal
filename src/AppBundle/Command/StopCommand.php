@@ -7,6 +7,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use DockerCloud;
 
+
 class StopCommand extends Command
 {
     protected function configure()
@@ -25,8 +26,7 @@ class StopCommand extends Command
     {
         $output->writeln('Stopping...');
 
-
-        DockerCloud\Client::configure('tombayley1','868b7978-7dcf-41ca-af79-0d27027ac6a1');
+        DockerCloud\Client::configure('aliyatulyakova','cacd0470-37b7-4d13-808c-5791b472dda5');
 
         $API = new DockerCloud\API\NodeCluster();
         $Response = $API->getList();

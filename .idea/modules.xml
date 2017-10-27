@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/docker-cloud-stop-start-service.iml" filepath="$PROJECT_DIR$/.idea/docker-cloud-stop-start-service.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/my_project_name.iml" filepath="$PROJECT_DIR$/.idea/my_project_name.iml" />
     </modules>
   </component>
 </project>
