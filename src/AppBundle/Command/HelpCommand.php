@@ -19,6 +19,7 @@ class HelpCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-//        $output->writeln('');
+        $output->writeln('php bin/console stop ---->'.' Records the state of all running nodes and stacks; Scales Node Clusters to 0 and stops running stacks ');
+        $output->writeln('php bin/console start ---->'.' Restores previously recorded states of nodes and stacks');
     }
 }

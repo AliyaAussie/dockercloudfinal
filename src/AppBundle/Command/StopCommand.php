@@ -2,11 +2,22 @@
 // src/AppBundle/Command/CreateUserCommand.php
 namespace AppBundle\Command;
 
+use DockerCloud\API\NodeCluster as NC_API;
+use DockerCloud\API\Stack as ST_API;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use DockerCloud;
 
+
+//Node Cluster commands
+define('CMD_SCALE_NC','docker-cloud nodecluster scale');
+define('CMD_NC_INSPECT','docker-cloud nodecluster inspect');
+define('CMD_NC_LIST', 'docker-cloud nodecluster ls');
+
+//Stacks commands
+define('CMD_INSPECT_STACK','docker-cloud stack inspect');
+define('CMD_STACK_STOP','docker-cloud stack stop');
 
 class StopCommand extends Command
 {
@@ -28,13 +39,97 @@ class StopCommand extends Command
 
         DockerCloud\Client::configure('aliyatulyakova','cacd0470-37b7-4d13-808c-5791b472dda5');
 
-        $API = new DockerCloud\API\NodeCluster();
-        $Response = $API->getList();
-        $nClusters = $Response->getObjects();
-
-        foreach ($nClusters as $nCluster) {
-            $output->writeln("{$nCluster->getName()} ({$nCluster->getUuid()})");
-        }
-        
+        $output->writeln("***************Scale All Node Clusters******************");
+        $this->scaleAllNodeClusters($output);
+        $output->writeln("***************Stop All stacks******************");
+        $this->stopAllStacks($output);
+//        $output->writeln("***************Scale Single NodeCluster to 0******************");
+//        $this->scaleNodeClusterTo0($output);
+//        $output->writeln("***************Stop Single Stack******************");
+//        $this->stopStack($output);
     }
+
+    // Scale Single NodeCluster to 0 (test)
+    public function scaleNodeClusterTo0(OutputInterface $output){
+       $NC_API = new NC_API();
+        $NC_API->setOrganisationNamespace('ampco');
+        $NC_Response = $NC_API->get('088a5ede-0680-4394-804d-0aa8eecb0eb7');
+        if($NC_Response->getCurrentNumNodes() != 0){
+            $numb_nodes = $NC_Response->getCurrentNumNodes();
+            $file = 'var/data/NodeClustersState.txt';
+            $handle = fopen($file, 'a');
+            $data = $NC_Response->getUuid()."\r\n".$NC_Response->getCurrentNumNodes()."\r\n";
+            fwrite($handle, $data);
+//            $output = shell_exec(CMD_SCALE_NC.' '.$NC_Response->getUuid().' 0');
+            echo $NC_Response->getName().' : Scaling Node clusters to 0';
+        } else {
+            echo 'Number of nodes is already 0'."\r\n";
+        }
+    }
+
+    //Scale NodeClusters
+    public function scaleAllNodeClusters(OutputInterface $output){
+        $NC_API = new NC_API();
+        $NC_API->setOrganisationNamespace('ampco');
+        $NC_Response = $NC_API->getList();
+        $nclusters = $NC_Response->getObjects();
+         foreach ($nclusters as $ncluster) {
+             if ($ncluster->getCurrentNumNodes() == 0) {
+                 $output = shell_exec(CMD_NC_SCALE . ' ' . $ncluster->getUuid() . ' 0');
+             }
+             elseif ($ncluster->getCurrentNumNodes() != 0){
+                 $numb_nodes = $ncluster->getCurrentNumNodes();
+                 $file = 'var/data/NodeClustersState.txt';
+                 $handle = fopen($file, 'a');
+                 $data = $ncluster->getUuid()."\r\n".$ncluster->getCurrentNumNodes()."\r\n";
+                 fwrite($handle, $data);
+
+                 echo $ncluster->getName().' | Scaling to 0'."\r\n";
+//                 $output = shell_exec(CMD_NC_SCALE . ' ' . $ncluster->getUuid(). ' 0');
+             }
+         }
+    }
+
+
+//    Stop Single Stack (test)
+    public function stopStack(OutputInterface $output){
+        $ST_API = new ST_API();
+        $ST_API->setOrganisationNamespace('ampco');
+        $ST_Response = $ST_API->get('079d8534-5153-45fd-be83-94d2acb05878');
+          if ($ST_Response->getState() == 'Running' || $ST_Response->getState() == 'Partly running'){
+              $file = 'var/data/StacksState.txt';
+              $handle = fopen($file, 'a');
+              $data = $ST_Response->getUuid()."\r\n".$ST_Response->getState()."\r\n";
+              fwrite($handle, $data);
+              $output = shell_exec(CMD_STACK_STOP.' '.$ST_Response->getUuid());
+              echo 'Stopping the stack '.$ST_Response->getName();
+          } elseif ($ST_Response->getState() == 'Not running'){
+              echo $ST_Response->getName().' is already stopped. Current state is '.$ST_Response->getState()."\r\n";
+          }
+
+    }
+
+    //Stop All Stacks
+    public function stopAllStacks(OutputInterface $output){
+        $ST_API = new ST_API();
+        $ST_API->setOrganisationNamespace('ampco');
+        $ST_Response = $ST_API->getList();
+        $stacks = $ST_Response->getObjects();
+          foreach ($stacks as $stack){
+              if($stack->getState() == 'Running'){
+                  $file = 'var/data/StacksState.txt';
+                  $handle = fopen($file, 'a');
+                  $data = $stack->getUuid()."\r\n".$stack->getState()."\r\n";
+                  fwrite($handle, $data);
+                  echo $stack->getName().' | Stopping'."\r\n";
+//                  $output = shell_exec(CMD_STACK_STOP.' '.$stack->getUuid());
+              }
+              else {
+//                  $output = shell_exec(CMD_STACK_STOP.' '.$stack->getUuid());
+              }
+
+          }
+    }
+
+
 }

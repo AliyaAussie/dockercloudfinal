@@ -44,19 +44,15 @@ class StartCommand extends Command
 
         DockerCloud\Client::configure('aliyatulyakova','cacd0470-37b7-4d13-808c-5791b472dda5');
 
-        $output->writeln('******************Get Node Cluster by UUID********************');
-        $this->getNodeCluster($output);
-        $output->writeln('******************Scale Node Cluster********************');
-        $this->scaleNodeCluster($output);
         $output->writeln('******************Scale All Clusters********************');
         $this->scaleAllClusters($output);
-
+        sleep(30);
          $output->writeln('*********************Stacks********************');
         $this->startAllStacks($output);
-        $output->writeln('*********************Get Stack by UUID********************');
-   $this->getStack($output);
-        $output->writeln('*********************Start Stack********************');
-        $this->startStack($output);
+//                 $output->writeln('*********************Scale Single Cluster********************');
+//        $this->scaleNodeCluster($output);
+//        $output->writeln('*********************Start Single Stack********************');
+//        $this->startStack($output);
 
     }
 
@@ -73,8 +69,23 @@ class StartCommand extends Command
         $NC_API = new NC_API();
         $NC_API->setOrganisationNamespace('ampco');
         $NCResponse = $NC_API->get('088a5ede-0680-4394-804d-0aa8eecb0eb7');
-        $output = shell_exec(CMD_NC_SCALE.' '.$NCResponse->getUuid().' 1');
-        echo $output;
+
+        $array = explode("\r\n", file_get_contents('var/data/NodeClustersState.txt'));
+        $size = count($array);
+
+         for ($i=0; $i<$size; $i++){
+             if($NCResponse->getUuid() == $array[$i]){
+                 if($NCResponse->getCurrentNumNodes() != $array[$i+1]){
+                     echo 'Matches from last time '."\r\n";
+                     $numb = $array[$i+1];
+                     $output = shell_exec(CMD_NC_SCALE.' '.$NCResponse->getUuid().' '.$numb);
+                     echo $output;
+                 } elseif ($NCResponse->getCurrentNumNodes() == $array[$i+1]) {
+                     echo $NCResponse->getName().' has already deployed'."\r\n";
+                 }
+             }
+         }
+         $this->deleteNodeClustersStateFile();
     }
 
     //Scale All Clusters
@@ -84,16 +95,30 @@ class StartCommand extends Command
         $NCResponse = $NC_API->getList();
         $nclusters = $NCResponse->getObjects();
 
+        $array = explode("\r\n", file_get_contents('var/data/NodeClustersState.txt'));
+        $size = count($array);
+
         foreach ($nclusters as $ncluster){
-            $numb_nodes = $ncluster->getCurrentNumNodes();
-            if($numb_nodes != 0 && $numb_nodes != 2){
-//                $output = shell_exec(CMD_NC_SCALE.' '.$ncluster->getUuid().' '.$numb_nodes);
-                echo $ncluster->getName().' '.$ncluster->getState().' '.$ncluster->getCurrentNumNodes()."\r\n";
-            } elseif ($numb_nodes = 2 && $numb_nodes !=0) {
-                //            $output = shell_exec(CMD_NC_SCALE.' '.$ncluster->getUuid().' '.$numb_nodes);
-              echo $ncluster->getName().' '.$ncluster->getState().' '.$ncluster->getCurrentNumNodes()."\r\n";
-            }
+             for ($i=0; $i<$size; $i++){
+                 if($ncluster->getUuid() == $array[$i]){
+                     if($ncluster->getCurrentNumNodes() != $array[$i+1]) {
+                         echo 'Was deployed last time';
+                         $numb_nodes = $array[$i+1];
+//                     $output = shell_exec(CMD_NC_SCALE.' '.$ncluster->getUuid().' '.$numb_nodes);
+                         echo $ncluster->getName() . ' | Number of nodes: ' . $numb_nodes . "\r\n";
+                     } elseif ($ncluster->getCurrentNumNodes() == $array[$i+1]) {
+//                         $output = shell_exec(CMD_NC_SCALE.' '.$ncluster->getUuid().' '.'0');
+                         echo 'Already deployed. ';
+                         echo $ncluster->getName().' has '.$ncluster->getCurrentNumNodes().' node(s) '.$ncluster->getState()."\r\n";
+                     } else {
+                         echo $ncluster->getName().' has '.$ncluster->getCurrentNumNodes().' node(s). Scaling to '.$ncluster->getCurrentNumNodes()."\r\n";
+//                         $output = shell_exec(CMD_NC_SCALE.' '.$ncluster->getUuid().' '.$ncluster->getCurrentNumNodes());
+                     }
+                 }
+             }
+
         }
+        $this->deleteNodeClustersStateFile();
     }
 
     //Get Stack by UUID (test)
@@ -108,32 +133,81 @@ class StartCommand extends Command
     public function startStack(OutputInterface $output){
         $StackAPI = new ST_API;
         $StackAPI->setOrganisationNamespace('ampco');
-        $StackResponse = $StackAPI->get('78982ec0-6c27-4799-9fe7-15ee367f2e72');
-        $output = shell_exec(CMD_START_STACK.' '.$StackResponse->getUuid());
-           echo $output;
+        $StackResponse = $StackAPI->get('079d8534-5153-45fd-be83-94d2acb05878');
+
+        $array = explode("\r\n", file_get_contents('var/data/StacksState.txt'));
+        $size = count($array);
+
+        for ($i = 0; $i < $size; $i++) {
+            if($StackResponse->getUuid() == $array[$i]){
+                if($StackResponse->getState() != $array[$i]){
+                    echo 'Starting the stack: '.$StackResponse->getName();
+                    $output = shell_exec(CMD_START_STACK . ' ' . $StackResponse->getUuid());
+                    echo $output;
+                } else {
+                    echo 'Stack is already running';
+                }
+            }
+        }
+        $this->deleteStackFile();
+//        $output = shell_exec(CMD_START_STACK.' '.$StackResponse->getUuid());
+//           echo $output;
     }
 
     //Start All Stacks
-    public function startAllStacks(OutputInterface $output){
+    public function startAllStacks(OutputInterface $output)
+    {
         $StackAPI = new ST_API();
         $StackAPI->setOrganisationNamespace('ampco');
         $StackGetResponse = $StackAPI->getList();
         $stacks = $StackGetResponse->getObjects();
 
+        $array = explode("\r\n", file_get_contents('var/data/StacksState.txt'));
+        $size = count($array);
         foreach ($stacks as $stack) {
+            for ($i = 0; $i < $size; $i++) {
+                if ($stack->getUuid() == $array[$i]) {
+                    if ($stack->getState() != $array[$i + 1]) {
+                        if ($stack->getState() == 'Not running' || $stack->getState() == 'Terminated'){
+                            echo 'The stack is '.$stack->getState()."\r\n";
+                        } else {
+                        echo 'Was running last time. ';
+                        $output = shell_exec(CMD_START_STACK . ' ' . $stack->getUuid());
+                        echo $stack->getName() . ' | Starting..' . "\r\n";
+                        }
+                    } elseif ($stack->getState() == $array[$i+1]){
+                        echo $stack->getName().' is already running '."\r\n";
+                    }
 
-                $output = shell_exec(CMD_START_STACK . ' ' . $stack->getUuid());
-                echo $stack->getName() . " " . $stack->getState() . "\r\n";
+                }
             }
+        }
+
+            $this->deleteStackFile();
 
     }
 
+    public function readFile(){
+        $stackFile = file('var/data/StacksState.txt');
+        $array = explode("\r\n", file_get_contents('var/data/StacksState.txt'));
+        $size = count($array);
+        echo $size;
+         for ($i=0; $i < $size; $i++){
 
+             echo "This is the ".$array[$i].' numb'."\r\n";
+         }
 
+    }
 
+    public function deleteNodeClustersStateFile(){
+        $nodeClusterFile = 'var/data/NodeClustersState.txt';
+        unlink($nodeClusterFile);
+    }
 
+    public function deleteStackFile(){
+        $stackFile = 'var/data/StacksState.txt';
+        unlink($stackFile);
 
-
-
+    }
     
 }
