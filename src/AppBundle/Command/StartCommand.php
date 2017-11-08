@@ -20,6 +20,7 @@ define('CMD_STACK_INSPECT', 'docker-cloud stack inspect');
 //NodeClusters commands
 define('CMD_NC_SCALE', 'docker-cloud nodecluster scale');
 
+
 use DockerCloud;
 
 class StartCommand extends Command
@@ -39,20 +40,50 @@ class StartCommand extends Command
     
 
     protected function execute(InputInterface $input, OutputInterface $output)
+
     {
-    $output->writeln('Starting...');
+        $file = 'var/data/AuthStory.txt';
 
-        DockerCloud\Client::configure('aliyatulyakova','cacd0470-37b7-4d13-808c-5791b472dda5');
+        $array = explode("\r\n", file_get_contents('var/data/AuthStory.txt'));
+        $size = count($array);
 
-        $output->writeln('******************Scale All Clusters********************');
+        for($i=0; $i<$size; $i++){
+            if($array[$i] == 'Logged in'){
+
+                $output->writeln('You need to be authorized at docker first.');
+
+                $output->write('Enter username: ');
+                $username = fopen("php://stdin","w+");
+                $username = fgets($username);
+
+                $output->write('Enter apiKey: ');
+                $apiKey = fopen("php://stdin", "w+");
+                $apiKey = fgets($apiKey);
+
+                DockerCloud\Client::configure(trim($username), trim($apiKey));
+
+
+                $output->writeln('Starting...');
+
+//                DockerCloud\Client::configure('aliyatulyakova','cacd0470-37b7-4d13-808c-5791b472dda5');
+
+                        $output->writeln('******************Scale All Clusters********************');
         $this->scaleAllClusters($output);
-        sleep(30);
+        sleep(180);
          $output->writeln('*********************Stacks********************');
         $this->startAllStacks($output);
-//                 $output->writeln('*********************Scale Single Cluster********************');
-//        $this->scaleNodeCluster($output);
-//        $output->writeln('*********************Start Single Stack********************');
-//        $this->startStack($output);
+
+                //Clear AuthStory file
+                file_put_contents($file,' ');
+                 break;
+
+
+            } else {
+                $output->writeln('You must be logged in first');
+
+            }
+        }
+        
 
     }
 

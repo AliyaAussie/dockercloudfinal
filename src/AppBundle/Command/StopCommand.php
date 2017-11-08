@@ -10,6 +10,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use DockerCloud;
 
 
+
 //Node Cluster commands
 define('CMD_SCALE_NC','docker-cloud nodecluster scale');
 define('CMD_NC_INSPECT','docker-cloud nodecluster inspect');
@@ -21,7 +22,10 @@ define('CMD_STACK_STOP','docker-cloud stack stop');
 
 class StopCommand extends Command
 {
+
+
     protected function configure()
+
     {
         $this
             ->setName('stop')
@@ -33,20 +37,53 @@ class StopCommand extends Command
             ->setHelp('Records the state of all running node clusters and stacks, then sets the number of nodes for each node cluster to 0, which automatically stops the related stack');
     }
 
+
+
     protected function execute(InputInterface $input, OutputInterface $output)
+
     {
-        $output->writeln('Stopping...');
 
-        DockerCloud\Client::configure('aliyatulyakova','cacd0470-37b7-4d13-808c-5791b472dda5');
+        $file = 'var/data/AuthStory.txt';
 
-        $output->writeln("***************Scale All Node Clusters******************");
-        $this->scaleAllNodeClusters($output);
-        $output->writeln("***************Stop All stacks******************");
-        $this->stopAllStacks($output);
-//        $output->writeln("***************Scale Single NodeCluster to 0******************");
-//        $this->scaleNodeClusterTo0($output);
-//        $output->writeln("***************Stop Single Stack******************");
-//        $this->stopStack($output);
+        $array = explode("\r\n", file_get_contents('var/data/AuthStory.txt'));
+        $size = count($array);
+
+        for($i=0; $i<$size; $i++) {
+
+                if ($array[$i] == 'Logged in') {
+
+                    $output->writeln('You need to be authorized at docker first.');
+
+                    $output->write('Enter username: ');
+                    $username = fopen("php://stdin","w+");
+                    $username = fgets($username);
+
+                    $output->write('Enter apiKey: ');
+                    $apiKey = fopen("php://stdin", "w+");
+                    $apiKey = fgets($apiKey);
+
+                    DockerCloud\Client::configure(trim($username), trim($apiKey));
+
+                    $output->writeln('Stopping...');
+
+//                    DockerCloud\Client::configure('aliyatulyakova', 'cacd0470-37b7-4d13-808c-5791b472dda5');
+
+                    $output->writeln("***************Scale All Node Clusters******************");
+                    $this->scaleAllNodeClusters($output);
+                    sleep(180);
+                    $output->writeln("***************Stop All stacks******************");
+                    $this->stopAllStacks($output);
+
+                    //Clear AuthStory file
+                    file_put_contents($file,' ');
+                    break;
+                } else {
+                    $output->writeln('You must log in first');
+                } break;
+            }
+
+
+
     }
 
     // Scale Single NodeCluster to 0 (test)
@@ -60,7 +97,7 @@ class StopCommand extends Command
             $handle = fopen($file, 'a');
             $data = $NC_Response->getUuid()."\r\n".$NC_Response->getCurrentNumNodes()."\r\n";
             fwrite($handle, $data);
-//            $output = shell_exec(CMD_SCALE_NC.' '.$NC_Response->getUuid().' 0');
+            $output = shell_exec(CMD_SCALE_NC.' '.$NC_Response->getUuid().' 0');
             echo $NC_Response->getName().' : Scaling Node clusters to 0';
         } else {
             echo 'Number of nodes is already 0'."\r\n";
@@ -75,7 +112,7 @@ class StopCommand extends Command
         $nclusters = $NC_Response->getObjects();
          foreach ($nclusters as $ncluster) {
              if ($ncluster->getCurrentNumNodes() == 0) {
-                 $output = shell_exec(CMD_NC_SCALE . ' ' . $ncluster->getUuid() . ' 0');
+//                 $output->writeln($ncluster->getName().' is already scaled to 0');
              }
              elseif ($ncluster->getCurrentNumNodes() != 0){
                  $numb_nodes = $ncluster->getCurrentNumNodes();
@@ -85,7 +122,7 @@ class StopCommand extends Command
                  fwrite($handle, $data);
 
                  echo $ncluster->getName().' | Scaling to 0'."\r\n";
-//                 $output = shell_exec(CMD_NC_SCALE . ' ' . $ncluster->getUuid(). ' 0');
+                 $output = shell_exec(CMD_NC_SCALE . ' ' . $ncluster->getUuid(). ' 0');
              }
          }
     }
@@ -116,13 +153,13 @@ class StopCommand extends Command
         $ST_Response = $ST_API->getList();
         $stacks = $ST_Response->getObjects();
           foreach ($stacks as $stack){
-              if($stack->getState() == 'Running'){
+              if($stack->getState() == 'Running' || $stack->getState() == 'Partly running'){
                   $file = 'var/data/StacksState.txt';
                   $handle = fopen($file, 'a');
                   $data = $stack->getUuid()."\r\n".$stack->getState()."\r\n";
                   fwrite($handle, $data);
                   echo $stack->getName().' | Stopping'."\r\n";
-//                  $output = shell_exec(CMD_STACK_STOP.' '.$stack->getUuid());
+                  $output = shell_exec(CMD_STACK_STOP.' '.$stack->getUuid());
               }
               else {
 //                  $output = shell_exec(CMD_STACK_STOP.' '.$stack->getUuid());
